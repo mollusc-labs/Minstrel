@@ -1,0 +1,160 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use IO::Prompter;
+use File::Find;
+use File::Glob ':bsd_glob';
+use Unicode::Normalize;
+use Cwd qw();
+use YAML;
+
+sub usage {
+    CORE::say q{
+usage: migratus $VERB $NOUN
+    VERB:
+        make:
+            NOUN "migration": Creates a new migration in ./mig
+
+        remove:
+            NOUN "migration": Remove a migration, this does not undo the migration
+
+example: migratus make migration
+};
+}
+
+my $mig_location = ( Cwd::cwd() . '/mig' );
+
+mkdir $mig_location unless -d $mig_location;
+
+CORE::say("Using migration folder: $mig_location");
+
+my $verb = shift @ARGV;
+my $op   = shift @ARGV;
+
+if ( !$verb || !$op ) {
+    usage();
+    exit 1;
+}
+elsif ( $verb eq 'make' ) {
+    if ( $op eq 'migration' ) {
+        __PACKAGE__->_make_migration()
+          and __PACKAGE__->_exit_done();
+    }
+    else {
+        usage();
+        exit 1;
+    }
+}
+elsif ( $verb eq 'remove' ) {
+    if ( $op eq 'migration' ) {
+        __PACKAGE__->_remove_migration()
+          and __PACKAGE__->_exit_done();
+    }
+    else {
+        usage();
+        exit 1;
+    }
+}
+else {
+    usage();
+    exit 1;
+}
+
+sub _remove_migration {
+    CORE::say
+'Please specify a migration to remove. NOTE this will not undo the migration.';
+    my $name   = __PACKAGE__->_slugify( prompt 'Migration name: ' );
+    my $exists = 0;
+    find(
+        sub {
+            ( $exists = /.*$name.*\.yaml/xms ? $name : 0 )
+              && unlink $mig_location . "/$_";
+        },
+        $mig_location
+    );
+
+    CORE::say "Deleting ... $name";
+
+    __PACKAGE__->_exit_with_error("Could not find migration with name: $name")
+      unless $exists;
+
+    return 1;
+}
+
+sub _make_migration {
+    my $name = __PACKAGE__->_slugify( prompt 'Migration name: ' );
+
+    my $exists = 0;
+    find(
+        sub {
+            return if $exists;
+            $exists = /.*$name.*\.yaml/xms ? $name : undef;
+        },
+        $mig_location
+    );
+
+    if ($exists) {
+        __PACKAGE__->_exit_with_error(
+            "Migration: $name already exists as $exists");
+    }
+
+    my $num_migs      = () = glob( $mig_location . '/*' );
+    my $next          = ( $num_migs + 1 ) . '-' . $name . '-' . time . '.yaml';
+    my $next_location = $mig_location . '/' . $next;
+
+    CORE::say "Creating ... $next";
+
+    open( my $fh, '>', $next_location )
+      or __PACKAGE__->_exit_with_error(
+        'Something went wrong opening file handle for new migration!');
+
+    print $fh qq[name: $name
+up: >
+  YOUR SQL HERE
+down: >
+  THE OPPOSITE OF YOUR SQL THERE ^
+];
+
+    close $fh
+      or __PACKAGE__->_exit_with_error(
+        'Something went wrong closing file handle for new migration!');
+
+    __PACKAGE__->_open_editor($next_location);
+
+    return 1;
+}
+
+sub _exit_done {
+    CORE::say '[DONE]';
+    exit 0;
+}
+
+sub _exit_with_error {
+    my ( $class, $error, $exit_code ) = @_;
+
+    CORE::say "[FATAL] !!! $error";
+    exit( $exit_code // 1 );
+}
+
+sub _open_editor {
+    my $file = pop;
+    return system( $ENV{EDITOR} . ' ' . $file ) if $ENV{EDITOR};
+    return system( 'vi', $file );
+}
+
+sub _slugify {
+    my ( $class, $input ) = @_;
+
+    $input = NFKD($input);         # Normalize (decompose) the Unicode string
+    $input =~ tr/\000-\177//cd;    # Strip non-ASCII characters (>127)
+    $input =~ s/[^\w\s-]//g
+      ; # Remove all characters that are not word characters (includes _), spaces, or hyphens
+    $input =~ s/^\s+|\s+$//g;    # Trim whitespace from both ends
+    $input = lc($input);
+    $input =~ s/[-\s]+/-/g
+      ;    # Replace all occurrences of spaces and hyphens with a single hyphen
+
+    return $input;
+}

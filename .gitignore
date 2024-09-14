@@ -1,0 +1,8 @@
+mig/
+blib/
+MYMETA.*
+MANIFEST.*
+Makefile.old
+Makefile
+*.db
+pm_to_blib
