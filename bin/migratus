@@ -1,4 +1,22 @@
 #!/usr/bin/env perl
+#
+# This file is apart of Migratus, a Free and Open-Source
+# DBI migration toolkit for Perl 5 applications.
+#
+# Copyright (C) 2024  Mollusc Labs Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use strict;
 use warnings;
@@ -8,10 +26,10 @@ use File::Find;
 use File::Glob ':bsd_glob';
 use Unicode::Normalize;
 use Cwd qw();
-use YAML;
+use feature 'say';
 
 sub usage {
-    CORE::say q{
+    say q{
 usage: migratus $VERB $NOUN
     VERB:
         make:
@@ -28,7 +46,7 @@ my $mig_location = ( Cwd::cwd() . '/mig' );
 
 mkdir $mig_location unless -d $mig_location;
 
-CORE::say("Using migration folder: $mig_location");
+say "Using migration folder: $mig_location";
 
 my $verb = shift @ARGV;
 my $op   = shift @ARGV;
@@ -63,7 +81,7 @@ else {
 }
 
 sub _remove_migration {
-    CORE::say
+    say
 'Please specify a migration to remove. NOTE this will not undo the migration.';
     my $name   = __PACKAGE__->_slugify( prompt 'Migration name: ' );
     my $exists = 0;
@@ -75,7 +93,7 @@ sub _remove_migration {
         $mig_location
     );
 
-    CORE::say "Deleting ... $name";
+    say "Deleting ... $name";
 
     __PACKAGE__->_exit_with_error("Could not find migration with name: $name")
       unless $exists;
@@ -104,7 +122,7 @@ sub _make_migration {
     my $next          = ( $num_migs + 1 ) . '-' . $name . '-' . time . '.yaml';
     my $next_location = $mig_location . '/' . $next;
 
-    CORE::say "Creating ... $next";
+    say "Creating ... $next";
 
     open( my $fh, '>', $next_location )
       or __PACKAGE__->_exit_with_error(
@@ -127,14 +145,13 @@ down: >
 }
 
 sub _exit_done {
-    CORE::say '[DONE]';
+    say '[DONE]';
     exit 0;
 }
 
 sub _exit_with_error {
     my ( $class, $error, $exit_code ) = @_;
-
-    CORE::say "[FATAL] !!! $error";
+    say "[FATAL] !!! $error";
     exit( $exit_code // 1 );
 }
 

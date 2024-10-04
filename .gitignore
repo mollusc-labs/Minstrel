@@ -6,3 +6,6 @@ Makefile.old
 Makefile
 *.db
 pm_to_blib
+*.tgz
+*.tar.gz
+Migratus-*/

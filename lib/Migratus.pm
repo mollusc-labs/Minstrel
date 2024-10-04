@@ -1,3 +1,21 @@
+# This file is apart of Migratus, a Free and Open-Source
+# DBI migration toolkit for Perl 5 applications.
+#
+# Copyright (C) 2024  Mollusc Labs Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 package Migratus;
 
 use strict;
@@ -8,10 +26,13 @@ use DBI;
 use YAML::Tiny;
 use Digest::MD5 qw(md5_hex);
 use File::Find;
+use feature 'say';
 
 our $VERSION            = '0.0.1';
 our $TableName          = 'migratus_migrations';
 our $MigrationDirectory = 'mig';
+
+# ABSTRACT: a migration toolkit for DBI
 
 sub new {
     my ( $class, %args ) = @_;
@@ -27,7 +48,7 @@ sub new {
         $args{dbh}->do(
 qq[CREATE TABLE $TableName (id int unique, name varchar(500), up text, down text, file varchar(500));]
         );
-    } or do { CORE::say 'Table already exists ... ' if exists $args{loud} };
+    } or do { say 'Table already exists ... OK' if exists $args{loud} };
 
     return bless {
         quiet => exists $args{quiet},
@@ -81,8 +102,26 @@ sub migrate {
             )
           )
         {
+            my $yaml;
+            eval { $yaml = YAML::Tiny->read("$MigrationDirectory/$_"); };
+            if ($@) {
+                Carp::croak(
+                    qq[Database state invalidated!!
 
-            my $yaml      = YAML::Tiny->read("$MigrationDirectory/$_");
+$_ is not consistent with what has been logged in the migration database!
+
+Expected:
+    Up:
+        $record->{up}
+    Down:
+        $record->{down}
+
+Got:
+    File could not be read!
+]
+                );
+            }
+
             my $migration = shift @$yaml;
             if (   $record->{up} ne $migration->{up}
                 || $record->{down} ne $migration->{down} )
@@ -120,7 +159,7 @@ you intended.]
         }
     }
 
-    CORE::say 'Migratus [DONE]'
+    say 'Migratus [DONE]'
       unless $self->is_quiet;
 }
 
@@ -137,13 +176,14 @@ sub _run_migration {
     my $migration = shift @$yaml;
 
     my $sql = $migration->{$direction};
+    $sql = $self->_trim($sql);
 
-    CORE::say "$_ $direction SQL : $sql"
+    say "$_ $direction SQL:\n\n$sql\n"
       if $self->is_loud;
 
     my $sth = $dbh->prepare($sql);
     $sth->execute();
-    CORE::say "migration: $_ ... OK"
+    say "migration: $_ ... OK"
       unless $self->is_quiet;
 
     if ( my $err = $sth->err ) {
@@ -160,7 +200,16 @@ qq[insert into $TableName (id, name, up, down, file) values (?, ?, ?, ?, ?)],
         "$MigrationDirectory/$migration_file"
     );
 
+    $dbh->commit()
+      if !$dbh->{AutoCommit};
+
     return 0;
+}
+
+sub _trim {
+
+    # trim leading, and trailing white space
+    return pop =~ s/^\s+|\s+$//gr;
 }
 
 1;
