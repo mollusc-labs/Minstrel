@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-# This file is apart of Migratus, a Free and Open-Source
+# This file is apart of Minstrel, a Free and Open-Source
 # DBI migration toolkit for Perl 5 applications.
 #
 # Copyright (C) 2024  Mollusc Labs Inc.
@@ -30,7 +30,7 @@ use feature 'say';
 
 sub usage {
     say q{
-usage: migratus $VERB $NOUN
+usage: minstrel $VERB $NOUN
     VERB:
         make:
             NOUN "migration": Creates a new migration in ./mig
@@ -38,7 +38,7 @@ usage: migratus $VERB $NOUN
         remove:
             NOUN "migration": Remove a migration, this does not undo the migration
 
-example: migratus make migration
+example: minstrel make migration
 };
 }
 

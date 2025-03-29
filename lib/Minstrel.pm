@@ -1,4 +1,4 @@
-# This file is apart of Migratus, a Free and Open-Source
+# This file is apart of Minstrel, a Free and Open-Source
 # DBI migration toolkit for Perl 5 applications.
 #
 # Copyright (C) 2024  Mollusc Labs Inc.
@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package Migratus;
+package Minstrel;
 
 use strict;
 use warnings;
@@ -29,7 +29,7 @@ use File::Find;
 use feature 'say';
 
 our $VERSION            = '0.0.1';
-our $TableName          = 'migratus_migrations';
+our $TableName          = 'minstrel_migrations';
 our $MigrationDirectory = 'mig';
 
 # ABSTRACT: a migration toolkit for DBI
@@ -37,7 +37,7 @@ our $MigrationDirectory = 'mig';
 sub new {
     my ( $class, %args ) = @_;
 
-    Carp::croak("Argument error, argument dbh is required by Migratus->new")
+    Carp::croak("Argument error, argument dbh is required by Minstrel->new")
       unless $args{dbh};
 
     eval {
@@ -51,8 +51,9 @@ qq[CREATE TABLE $TableName (id int unique, name varchar(500), up text, down text
     } or do { say 'Table already exists ... OK' if exists $args{loud} };
 
     return bless {
-        quiet => exists $args{quiet},
-        loud  => exists $args{loud},
+        quiet => exists $args{quiet} && $args{quiet},
+        loud  => exists $args{loud}  && $args{loud},
+        path  => $args{path} // $MigrationDirectory,
         dbh   => $args{dbh},
     }, $class;
 }
@@ -69,6 +70,10 @@ sub is_loud {
     return shift->{loud};
 }
 
+sub path {
+    return shift->{path};
+}
+
 sub migrate {
     my ( $self, $direction ) = @_;
 
@@ -81,7 +86,7 @@ sub migrate {
         sub {
             push @files, $_ if $_ =~ /.*\.yaml$/xsmi;
         },
-        "./$MigrationDirectory"
+        "./" . $self->path
     );
 
     if ( scalar @files > 1 ) {
@@ -143,7 +148,7 @@ Got:
         $migration->{down}
 
 To reconcile database changes, please revert this record, and create a
-new migration using "migratus make migration", that performs the changes
+new migration using "minstrel make migration", that performs the changes
 you intended.]
                 );
             }
@@ -159,7 +164,7 @@ you intended.]
         }
     }
 
-    say 'Migratus [DONE]'
+    say 'Minstrel [DONE]'
       unless $self->is_quiet;
 }
 
@@ -213,3 +218,6 @@ sub _trim {
 }
 
 1;
+
+=begin
+=cut

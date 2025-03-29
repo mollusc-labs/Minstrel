@@ -4,11 +4,11 @@ use strict;
 use warnings;
 
 BEGIN {
-    use_ok 'Migratus';
+    use_ok 'Minstrel';
 }
 
-use Migratus;
+use Minstrel;
 
-eval { my $instance = Migratus->new() } or do { ok 1, 'dies without dbh?' };
+eval { my $instance = Minstrel->new() } or do { ok 1, 'dies without dbh?' };
 
 done_testing;
